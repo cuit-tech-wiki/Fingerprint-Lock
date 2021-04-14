@@ -1,0 +1,1287 @@
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE ______
+OBJECT MODULE PLACED IN .\Objects\Ö¸ÎÆËø.obj
+COMPILER INVOKED BY: D:\MDK5\C51\BIN\C51.EXE Ö¸ÎÆËø.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\Ö¸ÎÆË
+                    -ø.lst) TABS(2) OBJECT(.\Objects\Ö¸ÎÆËø.obj)
+
+line level    source
+
+   1          #include <STC12C5A60S2.H>
+   2          #include <string.h>
+   3          #include "codetab.h"
+   4          #include "LQ12864.h"
+   5          #include "24C0x.h"      //°üº¬24C02º¯Êý
+   6          #define uchar unsigned char
+   7          #define uint unsigned int  //ºê¶¨Òå
+   8          #define buffer1ID  0x01
+   9          #define buffer2ID  0x02
+  10          sbit k2=P3^3;       //Ö¸ÎÆÄ£¿é
+  11          sbit jidianqi=P3^2; //¶æ»ú
+  12          uint PageID;     
+  13          uchar data querenma=11;
+  14          uchar sum[2];
+  15          uchar grade[4];
+  16          uchar Gradezw;
+  17          uchar ID[4];
+  18          uchar IDzw;
+  19          uchar mimaID[7]={'5','5','5','5','5','5'};
+  20          uchar mima[7];
+  21          uchar cDuty=5;
+  22          int summaf,summas;
+  23          void UartInit(void)   //9600bps@11.0592MHz
+  24          {
+  25   1          PCON=0X00;
+  26   1          TMOD = 0x21;
+  27   1          SCON = 0x50;  // =0x50;????1,REN=1                    (????)
+  28   1          TL1  = TH1  = -3; // ???9600bps               (11.0592M??,???960)
+  29   1          TR1  = 1;   // ??T1
+  30   1          TH0=-92>>8;
+  31   1          TL0=-92;
+  32   1          TR0=1;
+  33   1          ET0=1;
+  34   1          EA=1;
+  35   1      }
+  36          
+  37          void delayms(uint z)    /*ºÁÃëÑÓÊ±º¯Êý*/
+  38            {
+  39   1          uint i,j;
+  40   1          
+  41   1          for(j=z;j>0;j--)
+  42   1          {
+  43   2          for(i=200;i>0;i--);
+  44   2          for(i=102;i>0;i--); 
+  45   2          }
+  46   1        }
+  47          void SFG_getimage()           //Â¼ÈëÖ¸ÎÆÍ¼Ïñ
+  48          {
+  49   1         uchar i;
+  50   1         SBUF=0xef;
+  51   1         while(TI==0);
+  52   1         TI=0;
+  53   1         SBUF=0X01;
+  54   1         while(TI==0);
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 2   
+
+  55   1         TI=0;
+  56   1              
+  57   1         SBUF=0XFF;
+  58   1         while(TI==0);
+  59   1         TI=0;
+  60   1         SBUF=0XFF;
+  61   1         while(TI==0);
+  62   1         TI=0;
+  63   1         SBUF=0XFF;
+  64   1         while(TI==0);
+  65   1         TI=0;
+  66   1         SBUF=0XFF;
+  67   1         while(TI==0);
+  68   1         TI=0;
+  69   1              
+  70   1         SBUF=0X01;
+  71   1         while(TI==0);
+  72   1         TI=0;
+  73   1              
+  74   1         SBUF=0X00;
+  75   1         while(TI==0);
+  76   1         TI=0;
+  77   1         SBUF=0X03;
+  78   1         while(TI==0);
+  79   1         TI=0;
+  80   1              
+  81   1         SBUF=0X01;
+  82   1         while(TI==0);
+  83   1         TI=0;
+  84   1              
+  85   1         SBUF=0X00;
+  86   1         while(TI==0);
+  87   1         TI=0;
+  88   1         summaf=0x05;
+  89   1         SBUF=summaf;
+  90   1         while(TI==0);
+  91   1         TI=0;
+  92   1              
+  93   1         for(i=0;i<9;i++)
+  94   1         {
+  95   2          while(RI==0);
+  96   2          RI=0;}
+  97   1              
+  98   1         while(RI==0);
+  99   1         RI=0;
+ 100   1         querenma=SBUF;
+ 101   1          
+ 102   1         while(RI==0);
+ 103   1         RI=0;
+ 104   1         sum[1]=SBUF;
+ 105   1         while(RI==0);
+ 106   1         RI=0;
+ 107   1         sum[0]=SBUF;
+ 108   1         summas=(sum[1]<<8)+sum[0];                  
+ 109   1      }
+ 110                  
+ 111          void SFG_genchar(uchar bufferID) //Éú³ÉÌØÕ÷²¢´æÓÚcharbuffer1/2  µ÷ÓÃºóµ¥Æ¬»ú²¨ÌØÂÊ±ä»¯@@@
+ 112          {
+ 113   1         uchar i;
+ 114   1         SBUF=0xef;
+ 115   1         while(TI==0);
+ 116   1         TI=0;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 3   
+
+ 117   1         SBUF=0X01;
+ 118   1         while(TI==0);
+ 119   1         TI=0;
+ 120   1              
+ 121   1         SBUF=0XFF;
+ 122   1         while(TI==0);
+ 123   1         TI=0;
+ 124   1         SBUF=0XFF;
+ 125   1         while(TI==0);
+ 126   1         TI=0;
+ 127   1         SBUF=0XFF;
+ 128   1         while(TI==0);
+ 129   1         TI=0;
+ 130   1         SBUF=0XFF;
+ 131   1         while(TI==0);
+ 132   1         TI=0;
+ 133   1              
+ 134   1         SBUF=0X01;
+ 135   1         while(TI==0);
+ 136   1         TI=0;
+ 137   1              
+ 138   1         SBUF=0X00;
+ 139   1         while(TI==0);
+ 140   1         TI=0;
+ 141   1         SBUF=0X04;
+ 142   1         while(TI==0);
+ 143   1         TI=0;
+ 144   1              
+ 145   1         SBUF=0X02;
+ 146   1         while(TI==0);
+ 147   1         TI=0;
+ 148   1              
+ 149   1         SBUF=bufferID;
+ 150   1         while(TI==0);
+ 151   1         TI=0;
+ 152   1              
+ 153   1         summaf=0x07+bufferID;
+ 154   1      //   sum[0]=summaf;
+ 155   1      //   sum[1]=summaf>>8;
+ 156   1         SBUF=0x00;
+ 157   1         while(TI==0)
+ 158   1         TI=0;
+ 159   1         SBUF=summaf;
+ 160   1         while(TI==0)
+ 161   1         TI=0;
+ 162   1         
+ 163   1         for(i=0;i<9;i++)
+ 164   1         {
+ 165   2          while(RI==0);
+ 166   2          RI=0;}
+ 167   1         while(RI==0);
+ 168   1         RI=0;
+ 169   1         querenma=SBUF;
+ 170   1         while(RI==0);
+ 171   1         RI=0;
+ 172   1         sum[1]=SBUF;
+ 173   1         while(RI==0);
+ 174   1         RI=0;
+ 175   1         sum[0]=SBUF;
+ 176   1         summas=(sum[1]<<8)+sum[0];                  
+ 177   1      }
+ 178          
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 4   
+
+ 179          void SFG_fastsearch(uchar bufferID)  //ËÑË÷Ö¸ÎÆ·µ»ØÖ¸ÎÆIDºÅ   sum¡¢pagenum>255¶¼»áÊ¹³ÌÐò¿¨@@@
+ 180          {
+ 181   1         uchar i,ID1, ID2;
+ 182   1         SBUF=0xef;
+ 183   1         while(TI==0);
+ 184   1         TI=0;
+ 185   1         SBUF=0X01;
+ 186   1         while(TI==0);
+ 187   1         TI=0;
+ 188   1         SBUF=0XFF;
+ 189   1         while(TI==0);
+ 190   1         TI=0;
+ 191   1         SBUF=0XFF;
+ 192   1         while(TI==0);
+ 193   1         TI=0;
+ 194   1         SBUF=0XFF;
+ 195   1         while(TI==0);
+ 196   1         TI=0;
+ 197   1         SBUF=0XFF;
+ 198   1         while(TI==0);
+ 199   1         TI=0;
+ 200   1              
+ 201   1         SBUF=0X01;
+ 202   1         while(TI==0);
+ 203   1         TI=0;
+ 204   1              
+ 205   1         SBUF=0X00;
+ 206   1         while(TI==0);
+ 207   1         TI=0;
+ 208   1         SBUF=0X08;
+ 209   1         while(TI==0);
+ 210   1         TI=0;
+ 211   1              
+ 212   1         SBUF=0X1b;
+ 213   1         while(TI==0);
+ 214   1         TI=0;
+ 215   1              
+ 216   1         SBUF=bufferID;
+ 217   1         while(TI==0);
+ 218   1         TI=0;
+ 219   1              
+ 220   1         SBUF=0x00;
+ 221   1         while(TI==0);
+ 222   1         TI=0;
+ 223   1         SBUF=0x00;
+ 224   1         while(TI==0);
+ 225   1         TI=0;
+ 226   1              
+ 227   1         SBUF=0X00;
+ 228   1         while(TI==0);
+ 229   1         TI=0;
+ 230   1         SBUF=0x0a; 
+ 231   1         while(TI==0);
+ 232   1         TI=0;
+ 233   1              
+ 234   1         summaf=9+0x1b+bufferID+0x0a;
+ 235   1         sum[0]=summaf>>8;
+ 236   1         sum[1]=summaf;
+ 237   1      
+ 238   1         SBUF=sum[0];
+ 239   1         while(TI==0);
+ 240   1         TI=0;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 5   
+
+ 241   1         SBUF=sum[1];
+ 242   1         while(TI==0);
+ 243   1         TI=0;
+ 244   1         
+ 245   1         for(i=0;i<9;i++)
+ 246   1         {
+ 247   2          while(RI==0);
+ 248   2          RI=0;}
+ 249   1                
+ 250   1         while(RI==0);
+ 251   1         RI=0;
+ 252   1         querenma=SBUF;
+ 253   1         while(RI==0);
+ 254   1         RI=0;
+ 255   1         ID1=SBUF;
+ 256   1         while(RI==0);
+ 257   1         RI=0;
+ 258   1         ID2=SBUF;          //½ÓÊÕµ½µÄIDºÅ
+ 259   1         while(RI==0);
+ 260   1         RI=0;
+ 261   1         grade[1]=SBUF;
+ 262   1         
+ 263   1         while(RI==0);
+ 264   1         RI=0;
+ 265   1         grade[0]=SBUF;   
+ 266   1         Gradezw=(grade[1]<<8)+grade[0];
+ 267   1         while(RI==0);
+ 268   1         RI=0;
+ 269   1         sum[1]=SBUF;
+ 270   1         while(RI==0);
+ 271   1         RI=0;
+ 272   1         sum[0]=SBUF;
+ 273   1         summas=(sum[1]<<8)+sum[0];                  
+ 274   1         //PageID=ID1;
+ 275   1         PageID=(ID1<<8)+ID2;
+ 276   1         
+ 277   1      }
+ 278                  
+ 279          
+ 280          
+ 281          /*void SFG_enroll()        //×Ô¶¯×¢²áÄ£°å·µ»Ø´æ´¢ID  =Â¼Í¼Ïñ+ºÏ²¢Éú³ÉÄ£°å+´¢´æÄ£°å
+ 282          {
+ 283             uchar i,ID1,ID2;
+ 284             SBUF=0xef;
+ 285             while(TI==0);
+ 286             TI=0;
+ 287             SBUF=0X01;
+ 288             while(TI==0);
+ 289             TI=0;
+ 290                  
+ 291             SBUF=0XFF;
+ 292             while(TI==0);
+ 293             TI=0;
+ 294             SBUF=0XFF;
+ 295             while(TI==0);
+ 296             TI=0;
+ 297             SBUF=0XFF;
+ 298             while(TI==0);
+ 299             TI=0;
+ 300             SBUF=0XFF;
+ 301             while(TI==0);
+ 302             TI=0;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 6   
+
+ 303                  
+ 304             SBUF=0X01;
+ 305             while(TI==0);
+ 306             TI=0;
+ 307                  
+ 308             SBUF=0X00;
+ 309             while(TI==0);
+ 310             TI=0;
+ 311             SBUF=0X03;
+ 312             while(TI==0);
+ 313             TI=0;
+ 314                  
+ 315             SBUF=0X10;
+ 316             while(TI==0);
+ 317             TI=0;
+ 318                     
+ 319             SBUF=0X00;
+ 320             while(TI==0);
+ 321             TI=0;
+ 322             summaf=0x14;
+ 323             SBUF=summaf;    //Ð£ÑéºÍ
+ 324             while(TI==0);
+ 325             TI=0;
+ 326                  
+ 327             for(i=0;i<9;i++)
+ 328             {
+ 329              while(RI==0);
+ 330              RI=0;}
+ 331             while(RI==0);
+ 332             RI=0;
+ 333             querenma=SBUF;
+ 334             while(RI==0);
+ 335             RI=0;
+ 336             ID1=SBUF;
+ 337             while(RI==0);
+ 338             RI=0;
+ 339             ID2=SBUF;
+ 340                  
+ 341             while(RI==0);
+ 342             RI=0;
+ 343             sum[1]=SBUF;
+ 344             while(RI==0);
+ 345             RI=0;
+ 346             sum[0]=SBUF;
+ 347             summas=(sum[1]<<8)+sum[0];                  
+ 348             //PageID=ID1;
+ 349             PageID=(ID1<<8)+ID2;
+ 350          }/*/
+ 351          void SFG_deletchar(uchar page)   //É¾³ýÖ¸ÎÆ        Ð£ÑéºÍÔÚ2×Ö½ÚµÄÒ³Âë´¦Ó¦·Ö¸ßµÍ×Ö½ÚÏà¼Ó
+ 352          {
+ 353   1         uchar i;
+ 354   1         SBUF=0xef;
+ 355   1         while(TI==0);
+ 356   1         TI=0;
+ 357   1         SBUF=0X01;
+ 358   1         while(TI==0);
+ 359   1         TI=0;
+ 360   1              
+ 361   1         SBUF=0XFF;
+ 362   1         while(TI==0);
+ 363   1         TI=0;
+ 364   1         SBUF=0XFF;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 7   
+
+ 365   1         while(TI==0);
+ 366   1         TI=0;
+ 367   1         SBUF=0XFF;
+ 368   1         while(TI==0);
+ 369   1         TI=0;
+ 370   1         SBUF=0XFF;
+ 371   1         while(TI==0);
+ 372   1         TI=0;
+ 373   1              
+ 374   1         SBUF=0X01;
+ 375   1         while(TI==0);
+ 376   1         TI=0;
+ 377   1              
+ 378   1         SBUF=0X00;
+ 379   1         while(TI==0);
+ 380   1         TI=0;
+ 381   1         SBUF=0X07;
+ 382   1         while(TI==0);
+ 383   1         TI=0;
+ 384   1              
+ 385   1         SBUF=0X0c;
+ 386   1         while(TI==0);
+ 387   1         TI=0;
+ 388   1              
+ 389   1         
+ 390   1         SBUF=0;
+ 391   1         while(TI==0);
+ 392   1         TI=0;
+ 393   1         SBUF=page;
+ 394   1         while(TI==0);
+ 395   1         TI=0;
+ 396   1              
+ 397   1         SBUF=0X00;
+ 398   1         while(TI==0);
+ 399   1         TI=0;
+ 400   1         SBUF=1;
+ 401   1         while(TI==0);
+ 402   1         TI=0;
+ 403   1              
+ 404   1         summaf=0x15+page;
+ 405   1         sum[0]=summaf;
+ 406   1         sum[1]=summaf>>8;
+ 407   1         SBUF=sum[1];
+ 408   1         while(TI==0);
+ 409   1         TI=0;
+ 410   1         SBUF=sum[0];
+ 411   1         while(TI==0);
+ 412   1         TI=0;
+ 413   1        
+ 414   1         for(i=0;i<9;i++)
+ 415   1         {
+ 416   2          while(RI==0);
+ 417   2          RI=0;}
+ 418   1         while(RI==0);
+ 419   1         RI=0;
+ 420   1         querenma=SBUF;
+ 421   1         while(RI==0);
+ 422   1         RI=0;
+ 423   1         sum[1]=SBUF;
+ 424   1         while(RI==0);
+ 425   1         RI=0;
+ 426   1         sum[0]=SBUF;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 8   
+
+ 427   1         summas=(sum[1]<<8)+sum[0];                  
+ 428   1      }
+ 429              
+ 430          void SFG_identify()       //×Ô¶¯ÑéÖ¤Ö¸ÎÆ     Â¼Í¼Ïñ+Éú³ÉÌØÕ÷+ËÑË÷
+ 431          {
+ 432   1         uchar i,ID1,ID2; 
+ 433   1         SBUF=0xef;
+ 434   1         while(TI==0);
+ 435   1         TI=0;
+ 436   1         SBUF=0X01;
+ 437   1         while(TI==0);
+ 438   1         TI=0;
+ 439   1              
+ 440   1         SBUF=0XFF;
+ 441   1         while(TI==0);
+ 442   1         TI=0;
+ 443   1         SBUF=0XFF;
+ 444   1         while(TI==0);
+ 445   1         TI=0;
+ 446   1         SBUF=0XFF;
+ 447   1         while(TI==0);
+ 448   1         TI=0;
+ 449   1         SBUF=0XFF;
+ 450   1         while(TI==0);
+ 451   1         TI=0;
+ 452   1              
+ 453   1         SBUF=0X01;
+ 454   1         while(TI==0);
+ 455   1         TI=0;
+ 456   1              
+ 457   1         SBUF=0X00;
+ 458   1         while(TI==0);
+ 459   1         TI=0;
+ 460   1         SBUF=0X03;
+ 461   1         while(TI==0);
+ 462   1         TI=0;
+ 463   1              
+ 464   1         SBUF=0X11;
+ 465   1         while(TI==0);
+ 466   1         TI=0;
+ 467   1                 
+ 468   1         SBUF=0X00;
+ 469   1         while(TI==0);
+ 470   1         TI=0;
+ 471   1         summaf=0x15;
+ 472   1         SBUF=summaf;    //Ð£ÑéºÍ
+ 473   1         while(TI==0);
+ 474   1         TI=0;
+ 475   1              
+ 476   1         for(i=0;i<9;i++)
+ 477   1         {
+ 478   2          while(RI==0);
+ 479   2          RI=0;}
+ 480   1         while(RI==0);
+ 481   1         RI=0;
+ 482   1         querenma=SBUF;
+ 483   1         while(RI==0);
+ 484   1         RI=0;
+ 485   1         ID1=SBUF;
+ 486   1         while(RI==0);
+ 487   1         RI=0;
+ 488   1         ID2=SBUF;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 9   
+
+ 489   1              
+ 490   1         while(RI==0);
+ 491   1         RI=0;
+ 492   1         grade[1]=SBUF;
+ 493   1         
+ 494   1         while(RI==0);
+ 495   1         RI=0;
+ 496   1         grade[0]=SBUF;   
+ 497   1         Gradezw=(grade[1]<<8)+grade[0];
+ 498   1              
+ 499   1         while(RI==0);
+ 500   1         RI=0;
+ 501   1         sum[1]=SBUF;
+ 502   1         while(RI==0);
+ 503   1         RI=0;
+ 504   1         sum[0]=SBUF;
+ 505   1         summas=(sum[1]>>8)+sum[0];                  
+ 506   1      //   PageID=ID1;
+ 507   1         PageID=(ID1>>8)+ID2;
+ 508   1      }
+ 509          void PS_Match()           
+ 510          {
+ 511   1         uchar i;
+ 512   1         SBUF=0xef;
+ 513   1         while(TI==0);
+ 514   1         TI=0;
+ 515   1         SBUF=0X01;
+ 516   1         while(TI==0);
+ 517   1         TI=0;
+ 518   1              
+ 519   1         SBUF=0XFF;
+ 520   1         while(TI==0);
+ 521   1         TI=0;
+ 522   1         SBUF=0XFF;
+ 523   1         while(TI==0);
+ 524   1         TI=0;
+ 525   1         SBUF=0XFF;
+ 526   1         while(TI==0);
+ 527   1         TI=0;
+ 528   1         SBUF=0XFF;
+ 529   1         while(TI==0);
+ 530   1         TI=0;
+ 531   1              
+ 532   1         SBUF=0X01;
+ 533   1         while(TI==0);
+ 534   1         TI=0;
+ 535   1              
+ 536   1         SBUF=0X00;
+ 537   1         while(TI==0);
+ 538   1         TI=0;
+ 539   1         SBUF=0X03;
+ 540   1         while(TI==0);
+ 541   1         TI=0;
+ 542   1              
+ 543   1         SBUF=0X03;
+ 544   1         while(TI==0);
+ 545   1         TI=0;
+ 546   1              
+ 547   1         SBUF=0X00;
+ 548   1         while(TI==0);
+ 549   1         TI=0;
+ 550   1         summaf=0x07;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 10  
+
+ 551   1         SBUF=summaf;
+ 552   1         while(TI==0);
+ 553   1         TI=0;
+ 554   1              
+ 555   1         for(i=0;i<9;i++)
+ 556   1         {
+ 557   2          while(RI==0);
+ 558   2          RI=0;}
+ 559   1              
+ 560   1         while(RI==0);
+ 561   1         RI=0;
+ 562   1         querenma=SBUF;
+ 563   1           while(RI==0);
+ 564   1         RI=0;
+ 565   1           while(RI==0);
+ 566   1         RI=0;
+ 567   1           while(RI==0);
+ 568   1         RI=0;
+ 569   1           while(RI==0);
+ 570   1         RI=0;
+ 571   1                       
+ 572   1      }
+ 573          
+ 574          
+ 575          void PS_RegModel()
+ 576          {
+ 577   1         uchar i;
+ 578   1         SBUF=0xef;
+ 579   1         while(TI==0);
+ 580   1         TI=0;
+ 581   1         SBUF=0X01;
+ 582   1         while(TI==0);
+ 583   1         TI=0;
+ 584   1              
+ 585   1         SBUF=0XFF;
+ 586   1         while(TI==0);
+ 587   1         TI=0;
+ 588   1         SBUF=0XFF;
+ 589   1         while(TI==0);
+ 590   1         TI=0;
+ 591   1         SBUF=0XFF;
+ 592   1         while(TI==0);
+ 593   1         TI=0;
+ 594   1         SBUF=0XFF;
+ 595   1         while(TI==0);
+ 596   1         TI=0;
+ 597   1              
+ 598   1         SBUF=0X01;
+ 599   1         while(TI==0);
+ 600   1         TI=0;
+ 601   1              
+ 602   1         SBUF=0X00;
+ 603   1         while(TI==0);
+ 604   1         TI=0;
+ 605   1         SBUF=0X03;
+ 606   1         while(TI==0);
+ 607   1         TI=0;
+ 608   1              
+ 609   1         SBUF=0X05;
+ 610   1         while(TI==0);
+ 611   1         TI=0;
+ 612   1              
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 11  
+
+ 613   1         SBUF=0X00;
+ 614   1         while(TI==0);
+ 615   1         TI=0;
+ 616   1         summaf=0x09;
+ 617   1         SBUF=summaf;
+ 618   1         while(TI==0);
+ 619   1         TI=0;
+ 620   1              
+ 621   1         for(i=0;i<9;i++)
+ 622   1         {
+ 623   2          while(RI==0);
+ 624   2          RI=0;}
+ 625   1              
+ 626   1         while(RI==0);
+ 627   1         RI=0;
+ 628   1         querenma=SBUF;
+ 629   1           while(RI==0);
+ 630   1         RI=0;
+ 631   1           while(RI==0);
+ 632   1         RI=0;
+ 633   1                       
+ 634   1      }
+ 635          
+ 636          void PS_Empty()
+ 637          {
+ 638   1         uchar i;
+ 639   1         SBUF=0xef;
+ 640   1         while(TI==0);
+ 641   1         TI=0;
+ 642   1         SBUF=0X01;
+ 643   1         while(TI==0);
+ 644   1         TI=0;
+ 645   1              
+ 646   1         SBUF=0XFF;
+ 647   1         while(TI==0);
+ 648   1         TI=0;
+ 649   1         SBUF=0XFF;
+ 650   1         while(TI==0);
+ 651   1         TI=0;
+ 652   1         SBUF=0XFF;
+ 653   1         while(TI==0);
+ 654   1         TI=0;
+ 655   1         SBUF=0XFF;
+ 656   1         while(TI==0);
+ 657   1         TI=0;
+ 658   1              
+ 659   1         SBUF=0X01;
+ 660   1         while(TI==0);
+ 661   1         TI=0;
+ 662   1              
+ 663   1         SBUF=0X00;
+ 664   1         while(TI==0);
+ 665   1         TI=0;
+ 666   1         SBUF=0X03;
+ 667   1         while(TI==0);
+ 668   1         TI=0;
+ 669   1              
+ 670   1         SBUF=0X0d;
+ 671   1         while(TI==0);
+ 672   1         TI=0;
+ 673   1              
+ 674   1         SBUF=0X00;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 12  
+
+ 675   1         while(TI==0);
+ 676   1         TI=0;
+ 677   1         
+ 678   1         SBUF=0x11;
+ 679   1         while(TI==0);
+ 680   1         TI=0;
+ 681   1              
+ 682   1         for(i=0;i<9;i++)
+ 683   1         {
+ 684   2          while(RI==0);
+ 685   2          RI=0;}
+ 686   1              
+ 687   1         while(RI==0);
+ 688   1         RI=0;
+ 689   1         querenma=SBUF;
+ 690   1           while(RI==0);
+ 691   1         RI=0;
+ 692   1           while(RI==0);
+ 693   1         RI=0;
+ 694   1                       
+ 695   1      }
+ 696          void PS_StoreChar( uchar BufferID, uchar PageID)
+ 697          {
+ 698   1          uchar i;
+ 699   1         SBUF=0xef;
+ 700   1         while(TI==0);
+ 701   1         TI=0;
+ 702   1         SBUF=0X01;
+ 703   1         while(TI==0);
+ 704   1         TI=0;
+ 705   1              
+ 706   1         SBUF=0XFF;
+ 707   1         while(TI==0);
+ 708   1         TI=0;
+ 709   1         SBUF=0XFF;
+ 710   1         while(TI==0);
+ 711   1         TI=0;
+ 712   1         SBUF=0XFF;
+ 713   1         while(TI==0);
+ 714   1         TI=0;
+ 715   1         SBUF=0XFF;
+ 716   1         while(TI==0);
+ 717   1         TI=0;
+ 718   1              
+ 719   1         SBUF=0X01;
+ 720   1         while(TI==0);
+ 721   1         TI=0;
+ 722   1              
+ 723   1         SBUF=0X00;
+ 724   1         while(TI==0);
+ 725   1         TI=0;
+ 726   1         SBUF=0X06;
+ 727   1         while(TI==0);
+ 728   1         TI=0;
+ 729   1         
+ 730   1          SBUF=0X06;
+ 731   1         while(TI==0);
+ 732   1         TI=0;
+ 733   1         
+ 734   1         SBUF=BufferID;
+ 735   1         while(TI==0);
+ 736   1         TI=0;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 13  
+
+ 737   1              
+ 738   1         SBUF=0X00;
+ 739   1         while(TI==0);
+ 740   1         TI=0;
+ 741   1         
+ 742   1         SBUF=PageID;
+ 743   1         while(TI==0);
+ 744   1         TI=0;
+ 745   1         
+ 746   1         summaf=0x01+0x06+0x06+BufferID+PageID;
+ 747   1         SBUF=0x00;
+ 748   1         while(TI==0);
+ 749   1         TI=0; 
+ 750   1         
+ 751   1         SBUF=summaf;
+ 752   1         while(TI==0);
+ 753   1         TI=0; 
+ 754   1         
+ 755   1         for(i=0;i<9;i++)
+ 756   1         {
+ 757   2          while(RI==0);
+ 758   2          RI=0;}
+ 759   1              
+ 760   1         while(RI==0);
+ 761   1         RI=0;
+ 762   1         querenma=SBUF;
+ 763   1           while(RI==0);
+ 764   1         RI=0;
+ 765   1           while(RI==0);
+ 766   1         RI=0;
+ 767   1      }
+ 768          
+ 769          uchar  KEY_Value(void)        
+ 770          {
+ 771   1        uchar Keyvalue;
+ 772   1        P0 = 0xf0;
+ 773   1        if(P0 != 0xf0)
+ 774   1        {
+ 775   2          delayms(10);
+ 776   2          if(P0 != 0xf0)
+ 777   2          {
+ 778   3            switch(P0)
+ 779   3            {
+ 780   4              case 0x70: Keyvalue=0;break;
+ 781   4              case 0xb0: Keyvalue=1;break;
+ 782   4              case 0xd0: Keyvalue=2;break;
+ 783   4              case 0xe0: Keyvalue=3;break;
+ 784   4            }
+ 785   3          }
+ 786   2          else
+ 787   2          {
+ 788   3            return 0xff;
+ 789   3          }
+ 790   2        }
+ 791   1        else
+ 792   1        {
+ 793   2          return 0xff;
+ 794   2        }
+ 795   1        P0 = 0x0f;
+ 796   1        {
+ 797   2          if(P0 != 0x0f)
+ 798   2          {
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 14  
+
+ 799   3            delayms(10);
+ 800   3            if(P0 != 0x0f)
+ 801   3            {
+ 802   4              switch(P0)
+ 803   4              {
+ 804   5                case 0x0e: Keyvalue+=0;break;
+ 805   5                case 0x0d: Keyvalue+=4;break;
+ 806   5                case 0x0b: Keyvalue+=8;break;
+ 807   5                case 0x07: Keyvalue+=12;break;
+ 808   5              }
+ 809   4              while(P0!=0x0f);
+ 810   4              delayms(10);
+ 811   4              while(P0!=0x0f);
+ 812   4            }
+ 813   3          }
+ 814   2        }
+ 815   1        return Keyvalue;
+ 816   1      }
+ 817          uchar GET_NUM(void)
+ 818          {
+ 819   1        uchar num=0;
+ 820   1        uchar key_num;
+ 821   1        uchar bb[4];
+ 822   1        bb[3]='\0';
+ 823   1        while(1)
+ 824   1        {
+ 825   2          key_num = KEY_Value();
+ 826   2          if(key_num!=0xff)
+ 827   2          {
+ 828   3            if(key_num==0)num=num*10;//¡®0¡¯¼ü  
+ 829   3            if(key_num>0&&key_num<10)//¡®1-9¡¯¼ü(ÏÞÖÆÊäÈë3Î»Êý)
+ 830   3            num =num*10+key_num;  
+ 831   3            if(key_num==14)num =num/10;//¡®DEL¡¯¼ü
+ 832   3            if(key_num==15)return num;  //¡®Enter¡¯¼ü
+ 833   3          }
+ 834   2          bb[0]='0';
+ 835   2          bb[1]=num/10+'0';
+ 836   2          bb[2]=num%10+'0';
+ 837   2          OLED_P8x16Str(0,6,"ID:");
+ 838   2          OLED_P8x16Str(24,6,bb);
+ 839   2        }
+ 840   1      
+ 841   1      }
+ 842          void GET_MIMA(void)
+ 843          {
+ 844   1        uchar i=0;
+ 845   1        uchar key_num;
+ 846   1        while(1)
+ 847   1        {
+ 848   2          key_num = KEY_Value();
+ 849   2          if(key_num!=0xff)
+ 850   2          {
+ 851   3            if(key_num>=0&&key_num<10 && i<6)//¡®1-9¡¯¼ü(ÏÞÖÆÊäÈë3Î»Êý)
+ 852   3            {
+ 853   4              mima[i]=key_num+'0';
+ 854   4              if(i!=5)i++;
+ 855   4            }
+ 856   3            if(key_num==14)
+ 857   3            {
+ 858   4              mima[i]='0';
+ 859   4              if(i) i--;
+ 860   4            }//¡®DEL¡¯¼ü
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 15  
+
+ 861   3            if(key_num==15) return;  //¡®Enter¡¯¼ü
+ 862   3          }
+ 863   2          OLED_P8x16Str(0,6,"MIMA:");
+ 864   2          OLED_P8x16Str(40,6,mima);
+ 865   2        }
+ 866   1      
+ 867   1      }
+ 868          void addfinger(void)
+ 869          {
+ 870   1        uchar i=0, processnum=0;
+ 871   1        while(1)
+ 872   1        {
+ 873   2        switch(processnum)
+ 874   2        {
+ 875   3          case 0:
+ 876   3            i++;
+ 877   3            OLED_CLS();
+ 878   3            OLED_P8x16Str(0,0,"put your fingers");
+ 879   3            while(!k2);
+ 880   3            SFG_getimage();
+ 881   3           if(querenma==0)
+ 882   3           {
+ 883   4            SFG_genchar(buffer1ID);
+ 884   4            UartInit();
+ 885   4             if(querenma==0)
+ 886   4             {
+ 887   5              OLED_P8x16Str(0,2,"the fingerprint is normal");
+ 888   5              i=0;
+ 889   5              SFG_fastsearch(buffer1ID);
+ 890   5              if(querenma==0)
+ 891   5              {
+ 892   6                OLED_CLS();
+ 893   6                OLED_P8x16Str(0,0,"The fingerprint has been stored");
+ 894   6                i=5;
+ 895   6              }
+ 896   5              else if(querenma==9)
+ 897   5              {
+ 898   6                OLED_CLS();
+ 899   6                i=0;
+ 900   6                processnum=1;
+ 901   6                OLED_P8x16Str(0,0,"please loosen your fingers");
+ 902   6                while(k2==1);
+ 903   6              }
+ 904   5             }
+ 905   4             else
+ 906   4             {
+ 907   5               OLED_P8x16Str(0,2,"error");
+ 908   5               delayms(1000);
+ 909   5             }
+ 910   4           }
+ 911   3           else
+ 912   3           {
+ 913   4             OLED_P8x16Str(0,2,"error");
+ 914   4             delayms(2000);
+ 915   4           }
+ 916   3           break;
+ 917   3      
+ 918   3            
+ 919   3          case 1:
+ 920   3            i++;
+ 921   3            OLED_CLS();
+ 922   3            OLED_P8x16Str(0,2,"heavy press fingers");
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 16  
+
+ 923   3            while(!k2);
+ 924   3            SFG_getimage();
+ 925   3            SFG_genchar(buffer2ID);
+ 926   3            UartInit();
+ 927   3            if(querenma==0)
+ 928   3            {
+ 929   4              OLED_CLS();
+ 930   4              OLED_P8x16Str(0,4,"the fingerprint is normal");
+ 931   4              i=0;
+ 932   4              processnum=2;
+ 933   4            }
+ 934   3            else
+ 935   3            {
+ 936   4              OLED_CLS();
+ 937   4              OLED_P8x16Str(0,4,"error");
+ 938   4              delayms(1000);
+ 939   4            }
+ 940   3            break;
+ 941   3            
+ 942   3          case 2:
+ 943   3            OLED_CLS();
+ 944   3            OLED_P8x16Str(0,0,"compare the two fingerprints");
+ 945   3            PS_Match();
+ 946   3            if(querenma==0x00) 
+ 947   3            {
+ 948   4              OLED_CLS();
+ 949   4              OLED_P8x16Str(0,0,"compare the successful");
+ 950   4              processnum=3;//Ìøµ½µÚËÄ²½
+ 951   4              delayms(1000);
+ 952   4            }
+ 953   3            else 
+ 954   3              {
+ 955   4                OLED_CLS();
+ 956   4                OLED_P8x16Str(0,0,"compare the failure,heavy press fingers");
+ 957   4                i=0;
+ 958   4                processnum=0;//Ìø»ØµÚÒ»²½   
+ 959   4              }
+ 960   3              delayms(2000);
+ 961   3              break;
+ 962   3            
+ 963   3          case 3:
+ 964   3              OLED_CLS();
+ 965   3              OLED_P8x16Str(0,0,"generate fingerprint module");
+ 966   3              PS_RegModel();
+ 967   3              if(querenma==0x00) 
+ 968   3              {
+ 969   4                
+ 970   4                OLED_P8x16Str(0,4,"fingerprint module is OK");
+ 971   4                processnum=4;//Ìøµ½µÚÎå²½
+ 972   4                delayms(1000);
+ 973   4              }
+ 974   3              else 
+ 975   3              {
+ 976   4                processnum=0;
+ 977   4                OLED_CLS();
+ 978   4                OLED_P8x16Str(0,0,"fingerprint module is OK");
+ 979   4                delayms(2000);
+ 980   4              }
+ 981   3              break;
+ 982   3              
+ 983   3          case 4: 
+ 984   3              OLED_CLS();
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 17  
+
+ 985   3              OLED_P8x16Str(0,0,"please enter the save ID(0=< ID <=9)");
+ 986   3              
+ 987   3              do
+ 988   3                IDzw=GET_NUM();
+ 989   3                
+ 990   3              while(!(IDzw<10));//ÊäÈëID±ØÐëÐ¡ÓÚÄ£¿éÈÝÁ¿×î´óµÄÊýÖµ
+ 991   3              UartInit();
+ 992   3              if(IDzw==11) return;  //·µ»ØÖ÷Ò³Ãæ
+ 993   3              PS_StoreChar(buffer2ID,IDzw);//´¢´æÄ£°å
+ 994   3              if(querenma==0x00) 
+ 995   3              {
+ 996   4                OLED_CLS();       
+ 997   4                OLED_P8x16Str(0,0,"fingerprint input successful");
+ 998   4                delayms(1000);
+ 999   4                return ;
+1000   4              }
+1001   3              else 
+1002   3              {
+1003   4                processnum=0;
+1004   4                OLED_CLS();
+1005   4                OLED_P8x16Str(0,0,"error");
+1006   4              }         
+1007   3              break;        
+1008   3          }
+1009   2          delayms(400);
+1010   2          if(i==5)//³¬¹ý5´ÎÃ»ÓÐ°´ÊÖÖ¸ÔòÍË³ö
+1011   2          {
+1012   3            OLED_CLS();
+1013   3            break;
+1014   3          }
+1015   2        }
+1016   1      }
+1017          
+1018          
+1019          void press_FR(void)
+1020          {
+1021   1          SFG_identify();
+1022   1          if(querenma==0)
+1023   1          {
+1024   2            if(Gradezw>100)
+1025   2            {
+1026   3            OLED_CLS();
+1027   3            switch(PageID)
+1028   3            {
+1029   4              case 0:
+1030   4                OLED_P8x16Str(0,0,"welcome YTG home");
+1031   4              break;
+1032   4              case 1:
+1033   4                OLED_P8x16Str(0,0,"welcome JYJ home");
+1034   4              break;
+1035   4              case 2:
+1036   4                OLED_P8x16Str(0,0,"welcome LJQ home");
+1037   4              break;
+1038   4              case 3:
+1039   4                OLED_P8x16Str(0,0,"welcome WSY home");
+1040   4              break;
+1041   4              case 4:
+1042   4                OLED_P8x16Str(0,0,"welcome RJX home");
+1043   4              break;
+1044   4              case 5:
+1045   4                OLED_P8x16Str(0,0,"welcome LP home");
+1046   4              break;
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 18  
+
+1047   4            }
+1048   3            grade[0]=Gradezw/100+'0';
+1049   3            grade[1]=Gradezw/10%10+'0';
+1050   3            grade[2]=Gradezw%10+'0';
+1051   3            grade[3]='\0';
+1052   3            OLED_P8x16Str(0,2,"grade:");
+1053   3            OLED_P8x16Str(48,2,grade);
+1054   3            OLED_P8x16Str(0,4,"open the door");
+1055   3            cDuty=25;
+1056   3            delayms(5000);
+1057   3            cDuty=5;
+1058   3            while(k2);
+1059   3            }
+1060   2            else
+1061   2            {
+1062   3              OLED_CLS();
+1063   3              OLED_P8x16Str(0,0,"too low match");
+1064   3              grade[0]=Gradezw/100+'0';
+1065   3              grade[1]=Gradezw/10%10+'0';
+1066   3              grade[2]=Gradezw%10+'0';
+1067   3              grade[3]='\0';
+1068   3              OLED_P8x16Str(0,2,"grade:");
+1069   3              OLED_P8x16Str(48,2,grade);
+1070   3              OLED_P8x16Str(0,4,"please loosen your fingers");
+1071   3              delayms(1000);
+1072   3              while(k2==1);
+1073   3            }
+1074   2          }
+1075   1          else
+1076   1          {
+1077   2            OLED_CLS();
+1078   2            OLED_P8x16Str(0,2,"please loosen your fingers");
+1079   2            delayms(1000);
+1080   2            while(k2==1);
+1081   2            OLED_CLS();
+1082   2            OLED_P8x16Str(0,2,"heavy press fingers");
+1083   2          }
+1084   1      }
+1085            
+1086          void deletfinger()      //É¾³ýÓÃ»§Ö¸ÎÆ
+1087          {
+1088   1        uchar Del_ID;
+1089   1        OLED_CLS();
+1090   1        OLED_P8x16Str(0,0,"Enter the deleted ID");
+1091   1        delayms(50);
+1092   1        do
+1093   1                Del_ID=GET_NUM();
+1094   1                
+1095   1              while(!(Del_ID<12));//ÊäÈëID±ØÐëÐ¡ÓÚÄ£¿éÈÝÁ¿×î´óµÄÊýÖµ
+1096   1        if(Del_ID==11) return;
+1097   1        else if(Del_ID==10)
+1098   1        {
+1099   2          PS_Empty();
+1100   2          if(querenma==0)
+1101   2          {
+1102   3            OLED_CLS();
+1103   3            OLED_P8x16Str(0,0,"empty fingerprints");
+1104   3            delayms(2000);
+1105   3          }
+1106   2          else
+1107   2          {
+1108   3            OLED_CLS();
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 19  
+
+1109   3            OLED_P8x16Str(0,0,"error");
+1110   3          }
+1111   2        }
+1112   1        else if(Del_ID<10)
+1113   1        {
+1114   2        SFG_deletchar(Del_ID);
+1115   2        if(querenma==0)
+1116   2        {
+1117   3          OLED_CLS();
+1118   3          OLED_P8x16Str(0,0,"the fingerprint has been deleted"); 
+1119   3        }
+1120   2        else
+1121   2        {
+1122   3          OLED_CLS();
+1123   3          OLED_P8x16Str(0,0,"delete failed");  
+1124   3          
+1125   3        }
+1126   2        OLED_P8x16Str(2,0,"press any key to continue"); 
+1127   2        while(KEY_Value()==0);
+1128   2        OLED_CLS();
+1129   2        }
+1130   1      }
+1131          
+1132          void guanliyuan()       //¹ÜÀíÔ±
+1133          {
+1134   1        uchar K;
+1135   1        uchar i;
+1136   1        uchar Right_flag;
+1137   1        OLED_CLS();
+1138   1        OLED_P8x16Str(0,0,"please enter the password"); 
+1139   1        mima[6]='\0';
+1140   1        for(i=0;i<6;i++)mima[i]='0';
+1141   1        GET_MIMA();
+1142   1        if(strcmp(mimaID, mima)==0)
+1143   1        {
+1144   2          Right_flag=1;
+1145   2        }
+1146   1        else Right_flag=0;
+1147   1        OLED_CLS();
+1148   1        
+1149   1        if(Right_flag)
+1150   1        {
+1151   2        K=KEY_Value();
+1152   2        while(K!=15)
+1153   2         {
+1154   3          OLED_P8x16Str(0,0,"key1: add a fingerprint"); 
+1155   3          OLED_P8x16Str(0,4,"key2: delete a fingerprint");
+1156   3          K=KEY_Value();  
+1157   3            switch(K)
+1158   3            {
+1159   4             case 1:    addfinger();     break;
+1160   4             case 2:    deletfinger();   break;
+1161   4             default: break;
+1162   4            }
+1163   3         }
+1164   2        }
+1165   1        else
+1166   1        {
+1167   2          OLED_P8x16Str(0,0,"password mistake");
+1168   2          OLED_P8x16Str(0,2,"press any key to continue"); 
+1169   2          while(KEY_Value()==0xff);
+1170   2        }
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 20  
+
+1171   1        OLED_CLS();
+1172   1      }
+1173          
+1174          void MENU()
+1175          {
+1176   1        uchar KEY;
+1177   1        OLED_P8x16Str(0,0,"welcome to 4022");
+1178   1        OLED_P8x16Str(0,2,"press your finger to enter");
+1179   1        KEY=KEY_Value();
+1180   1      if(k2==1)   //Ö¸ÎÆË¢»ú
+1181   1        {
+1182   2        OLED_CLS();
+1183   2        press_FR();
+1184   2        OLED_CLS();
+1185   2        }
+1186   1        if(KEY==15)     //¹ÜÀíÔ±²Ù×÷
+1187   1        {
+1188   2        OLED_CLS();
+1189   2        guanliyuan();
+1190   2        OLED_CLS();
+1191   2        }
+1192   1      
+1193   1      } 
+1194          void main()
+1195          { 
+1196   1      
+1197   1         UartInit();     //´®¿Ú³õÊ¼»¯
+1198   1         OLED_Init();
+1199   1         OLED_CLS();
+1200   1         while(1)
+1201   1         {
+1202   2            MENU();   
+1203   2         }
+1204   1      
+1205   1      }
+1206          
+1207          void Timer0() interrupt 1
+1208          {
+1209   1        static int i;
+1210   1        TH0=-92>>8;
+1211   1        TL0=-92;
+1212   1        i++;
+1213   1        if(i<=cDuty)
+1214   1        {
+1215   2          jidianqi=1;
+1216   2        }
+1217   1        else
+1218   1        {
+1219   2          jidianqi=0;
+1220   2        }
+1221   1        if(i>=200) i = 0;
+1222   1        
+1223   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3904    ----
+   CONSTANT SIZE    =   8399    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     36      34
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V9.53.0.0   ______                                                            11/01/2020 19:02:18 PAGE 21  
+
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
